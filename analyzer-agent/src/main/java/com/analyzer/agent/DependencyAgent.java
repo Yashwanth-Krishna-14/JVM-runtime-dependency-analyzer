@@ -43,22 +43,38 @@ public class DependencyAgent {
             System.out.println("[DependencyAgent] Retransformation complete.");
         }
 
-        // Shutdown hook to dump graph
+        // Shutdown hook to run analysis and dump report
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("[DependencyAgent] Dumping dependency graph to " + OUTPUT_FILE + "...");
+            System.out.println("[DependencyAgent] Running architecture analysis...");
 
             try {
+                // 1. Run Coupling Analysis
+                com.analyzer.core.analysis.CouplingAnalyzer couplingAnalyzer = new com.analyzer.core.analysis.CouplingAnalyzer();
+                java.util.List<com.analyzer.common.model.ClassMetrics> metrics = couplingAnalyzer.analyze(graph);
+
+                // 2. Run Cycle Detection
+                com.analyzer.core.analysis.CycleDetector cycleDetector = new com.analyzer.core.analysis.CycleDetector();
+                java.util.List<java.util.List<String>> cycles = cycleDetector.detectCycles(graph);
+
+                // 3. Compute Summary Stats
+                int totalClasses = graph.getNodes().size();
+                int totalDependencies = graph.calculateFanOut().values().stream().mapToInt(Integer::intValue).sum();
+                int totalCycles = cycles.size();
+
+                // 4. Construct Report
+                com.analyzer.common.model.ArchitectureReport report = new com.analyzer.common.model.ArchitectureReport(
+                        totalClasses, totalDependencies, totalCycles, metrics, cycles);
+
+                // 5. Serialize to JSON
+                System.out.println("[DependencyAgent] Dumping architecture report to " + OUTPUT_FILE + "...");
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 mapper.enable(com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT);
 
-                // We want to serialize the nodes. graph.getNodes() returns a
-                // Set<DependencyNode>
-                // Jackson should handle this POJO serialization automatically.
-                mapper.writeValue(new java.io.File(OUTPUT_FILE), graph.getNodes());
+                mapper.writeValue(new java.io.File(OUTPUT_FILE), report);
 
-                System.out.println("[DependencyAgent] Dump complete.");
+                System.out.println("[DependencyAgent] Analysis complete.");
 
-            } catch (java.io.IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }));

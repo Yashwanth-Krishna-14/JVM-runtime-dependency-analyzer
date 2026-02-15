@@ -1,5 +1,7 @@
+com\analyzer\core\analysis\CycleDetector.class
+com\analyzer\core\ArtifactScanner.class
+com\analyzer\core\analysis\CouplingAnalyzer.class
 com\analyzer\core\ClassAnalyzer$2.class
 com\analyzer\core\ArtifactScanner$1.class
-com\analyzer\core\ArtifactScanner.class
 com\analyzer\core\ClassAnalyzer$1.class
 com\analyzer\core\ClassAnalyzer.class
