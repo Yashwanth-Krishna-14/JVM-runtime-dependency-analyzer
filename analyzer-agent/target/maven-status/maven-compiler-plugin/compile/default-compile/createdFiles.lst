@@ -1,0 +1,2 @@
+com\analyzer\agent\DependencyAgent.class
+com\analyzer\agent\ClassLoadTracer.class

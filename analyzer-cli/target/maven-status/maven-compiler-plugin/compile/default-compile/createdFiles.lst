@@ -1,0 +1,5 @@
+com\analyzer\cli\AttachCommand.class
+com\analyzer\cli\CyclesCommand.class
+com\analyzer\cli\AnalyzeCommand.class
+com\analyzer\cli\Main.class
+com\analyzer\cli\ConflictsCommand.class

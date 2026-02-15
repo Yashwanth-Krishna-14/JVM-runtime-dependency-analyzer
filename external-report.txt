@@ -1,0 +1,38 @@
+Dependency_injection.Greet
+  -> java.io.PrintStream
+  -> org.springframework.stereotype.Component
+  -> java.lang.System
+  -> java.lang.Object
+  -> java.lang.String
+autowire.Make
+  -> java.io.PrintStream
+  -> org.springframework.stereotype.Component
+  -> java.lang.System
+  -> org.springframework.beans.factory.annotation.Autowired
+  -> java.lang.Object
+  -> autowire.Model
+  -> java.lang.String
+autowire.Car
+  -> org.springframework.boot.SpringApplication
+  -> org.springframework.boot.autoconfigure.SpringBootApplication
+  -> org.springframework.context.ConfigurableApplicationContext
+  -> java.lang.Object
+  -> java.lang.Class
+  -> java.lang.String
+  -> org.springframework.context.ApplicationContext
+  -> autowire.Make
+Dependency_injection.DependencyInjectionApplication
+  -> org.springframework.boot.SpringApplication
+  -> Dependency_injection.Greet
+  -> org.springframework.boot.autoconfigure.SpringBootApplication
+  -> org.springframework.context.ConfigurableApplicationContext
+  -> java.lang.Object
+  -> java.lang.Class
+  -> java.lang.String
+  -> org.springframework.context.ApplicationContext
+autowire.Model
+  -> java.io.PrintStream
+  -> org.springframework.stereotype.Component
+  -> java.lang.System
+  -> java.lang.Object
+  -> java.lang.String
