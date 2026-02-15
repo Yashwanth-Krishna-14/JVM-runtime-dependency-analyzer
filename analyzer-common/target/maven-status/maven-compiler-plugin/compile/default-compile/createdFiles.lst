@@ -1,4 +1,6 @@
 com\analyzer\common\model\ArchitectureReport.class
 com\analyzer\common\model\ClassMetrics.class
 com\analyzer\common\DependencyGraph.class
+com\analyzer\common\util\ClassFilter.class
+com\analyzer\common\model\ArchitectureHealth.class
 com\analyzer\common\DependencyNode.class

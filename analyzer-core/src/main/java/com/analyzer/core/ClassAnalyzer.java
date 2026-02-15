@@ -4,31 +4,34 @@ import com.analyzer.common.DependencyGraph;
 import org.objectweb.asm.*;
 
 import com.analyzer.common.DependencyNode;
+import com.analyzer.common.util.ClassFilter;
 
 public class ClassAnalyzer extends ClassVisitor {
     private final DependencyGraph graph;
-    private String currentClassName;
-    private String version;
-    private String source;
+    private final com.analyzer.common.util.ClassFilter classFilter;
+    private String className;
+    private String currentVersion;
+    private String currentSource;
 
-    public ClassAnalyzer(DependencyGraph graph) {
+    public ClassAnalyzer(DependencyGraph graph, com.analyzer.common.util.ClassFilter classFilter) {
         super(Opcodes.ASM9);
         this.graph = graph;
+        this.classFilter = classFilter;
     }
 
     public void setContext(String version, String source) {
-        this.version = version;
-        this.source = source;
+        this.currentVersion = version;
+        this.currentSource = source;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        this.currentClassName = name.replace('/', '.');
-        DependencyNode node = graph.getOrCreateNode(currentClassName);
-        if (this.version != null)
-            node.setVersion(this.version);
-        if (this.source != null)
-            node.setSourceJar(this.source);
+        this.className = name.replace('/', '.');
+        DependencyNode node = graph.getOrCreateNode(className);
+        if (this.currentVersion != null)
+            node.setVersion(this.currentVersion);
+        if (this.currentSource != null)
+            node.setSourceJar(this.currentSource);
 
         if (superName != null && !superName.equals("java/lang/Object")) {
             addDependency(superName);
@@ -125,9 +128,16 @@ public class ClassAnalyzer extends ClassVisitor {
             type = type.getElementType();
         }
         if (type.getSort() == Type.OBJECT) {
-            String className = type.getClassName();
-            if (!className.equals(currentClassName)) {
-                graph.addDependency(currentClassName, className);
+            String dependencyClassName = type.getClassName(); // Renamed className to dependencyClassName to avoid
+                                                              // conflict
+            if (!dependencyClassName.equals(className) && classFilter.isDependencyAllowed(dependencyClassName)) { // Changed
+                                                                                                                  // currentClassName
+                                                                                                                  // to
+                                                                                                                  // className
+                                                                                                                  // and
+                                                                                                                  // added
+                                                                                                                  // filter
+                graph.addDependency(className, dependencyClassName); // Changed currentClassName to className
             }
         }
     }

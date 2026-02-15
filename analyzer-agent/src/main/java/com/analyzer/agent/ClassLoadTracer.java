@@ -2,13 +2,19 @@ package com.analyzer.agent;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClassLoadTracer implements ClassFileTransformer {
 
     private final com.analyzer.common.DependencyGraph graph;
+    private final com.analyzer.common.util.ClassFilter classFilter;
+    private final AtomicInteger filteredClassesCount = new AtomicInteger(0);
+    private final AtomicInteger ignoredClassesCount = new AtomicInteger(0);
 
-    public ClassLoadTracer(com.analyzer.common.DependencyGraph graph) {
+    public ClassLoadTracer(com.analyzer.common.DependencyGraph graph,
+            com.analyzer.common.util.ClassFilter classFilter) {
         this.graph = graph;
+        this.classFilter = classFilter;
     }
 
     @Override
@@ -18,16 +24,18 @@ public class ClassLoadTracer implements ClassFileTransformer {
         if (className == null)
             return null;
 
-        // Skip JDK classes and our own agent classes to avoid infinite recursion/noise
-        if (className.startsWith("java/") || className.startsWith("sun/") || className.startsWith("jdk/") ||
-                className.startsWith("com/analyzer/agent/")) {
+        // Check if class is allowed by the filter
+        if (!classFilter.isAllowed(className)) {
+            ignoredClassesCount.incrementAndGet();
             return null;
         }
+
+        filteredClassesCount.incrementAndGet();
 
         try {
             // System.out.println("[Analyzer] Inspecting " + className);
             org.objectweb.asm.ClassReader reader = new org.objectweb.asm.ClassReader(classfileBuffer);
-            com.analyzer.core.ClassAnalyzer analyzer = new com.analyzer.core.ClassAnalyzer(graph);
+            com.analyzer.core.ClassAnalyzer analyzer = new com.analyzer.core.ClassAnalyzer(graph, classFilter);
 
             // We can try to guess version/source from protection domain if available,
             // but for now let's just analyze dependencies.
@@ -38,12 +46,20 @@ public class ClassLoadTracer implements ClassFileTransformer {
             analyzer.setContext("runtime", source);
             reader.accept(analyzer, 0);
 
-        } catch (Throwable t) {
-            // Be very careful not to break the app if analysis fails
-            t.printStackTrace();
+        } catch (Throwable e) {
+            // Ignore errors during analysis to avoid crashing the app
+            // e.printStackTrace();
         }
 
-        // Return null to indicate no transformation (just inspection)
+        // Return null means "no transformation", just introspection
         return null;
+    }
+
+    public int getFilteredClassesCount() {
+        return filteredClassesCount.get();
+    }
+
+    public int getIgnoredClassesCount() {
+        return ignoredClassesCount.get();
     }
 }

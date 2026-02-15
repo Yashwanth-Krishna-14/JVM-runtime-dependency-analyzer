@@ -7,40 +7,66 @@ public class DependencyAgent {
 
     private static final String OUTPUT_FILE = "dependency-graph.json";
     private static DependencyGraph graph;
+    private static com.analyzer.common.util.ClassFilter classFilter;
+    private static ClassLoadTracer tracer;
 
     public static void premain(String agentArgs, Instrumentation inst) {
         System.out.println("[DependencyAgent] Installing ClassFileTransformer (startup mode)...");
-        initializeWithGraph(inst, false);
+        initializeWithGraph(inst, agentArgs, false);
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
         System.out.println("[DependencyAgent] Agent attached dynamically...");
-        initializeWithGraph(inst, true);
+        initializeWithGraph(inst, agentArgs, true);
     }
 
-    private static void initializeWithGraph(Instrumentation inst, boolean retransformLoaded) {
-        graph = new DependencyGraph();
-
-        ClassLoadTracer transformer = new ClassLoadTracer(graph);
-
-        // Enable retransformation capability
-        inst.addTransformer(transformer, true);
-
-        // 🔥 Critical part for dynamic attach
-        if (retransformLoaded) {
-            System.out.println("[DependencyAgent] Retransforming already loaded classes...");
-
-            for (Class<?> clazz : inst.getAllLoadedClasses()) {
-                try {
-                    if (inst.isModifiableClass(clazz)) {
-                        inst.retransformClasses(clazz);
-                    }
-                } catch (Throwable ignored) {
-                    // Some classes (like JVM internals) cannot be modified
+    private static void initializeWithGraph(Instrumentation inst, String agentArgs, boolean retransformLoaded) {
+        // Parse arguments: basePackage=com.example
+        String basePackage = null;
+        if (agentArgs != null) {
+            String[] args = agentArgs.split(",");
+            for (String arg : args) {
+                if (arg.trim().startsWith("basePackage=")) {
+                    basePackage = arg.trim().substring("basePackage=".length());
                 }
             }
+        }
 
-            System.out.println("[DependencyAgent] Retransformation complete.");
+        System.out
+                .println("[DependencyAgent] Configuration: basePackage=" + (basePackage == null ? "ALL" : basePackage));
+
+        graph = new DependencyGraph();
+        classFilter = new com.analyzer.common.util.ClassFilter(basePackage);
+        tracer = new ClassLoadTracer(graph, classFilter);
+        inst.addTransformer(tracer, true);
+
+        if (retransformLoaded) {
+            try {
+                System.out.println("[DependencyAgent] Retransforming loaded classes...");
+                // Retransform only editable classes
+                // In practice, retransforming EVERYTHING is risky and slow.
+                // We typically only want to retransform classes we are interested in.
+                // BUT, to get a graph, we need to inspect them.
+                // For safety in this prototype, we might iterate all classes but careful with
+                // JDK.
+                // The transformer itself has guards.
+
+                // For simplicity/safety in this prototype, we will attempt retransformation
+                // but usually agents define a restrictive scope.
+                Class<?>[] loadedClasses = inst.getAllLoadedClasses();
+                for (Class<?> clazz : loadedClasses) {
+                    if (inst.isModifiableClass(clazz) && classFilter.isAllowed(clazz.getName().replace('.', '/'))) {
+                        try {
+                            inst.retransformClasses(clazz);
+                        } catch (Throwable t) {
+                            // Ignore
+                        }
+                    }
+                }
+                System.out.println("[DependencyAgent] Retransformation complete.");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         // Shutdown hook to run analysis and dump report
@@ -61,11 +87,18 @@ public class DependencyAgent {
                 int totalDependencies = graph.calculateFanOut().values().stream().mapToInt(Integer::intValue).sum();
                 int totalCycles = cycles.size();
 
-                // 4. Construct Report
-                com.analyzer.common.model.ArchitectureReport report = new com.analyzer.common.model.ArchitectureReport(
-                        totalClasses, totalDependencies, totalCycles, metrics, cycles);
+                // 4. Compute Health Score
+                com.analyzer.core.analysis.ArchitectureHealthScorer healthScorer = new com.analyzer.core.analysis.ArchitectureHealthScorer();
+                com.analyzer.common.model.ArchitectureHealth health = healthScorer.score(metrics, cycles, totalClasses,
+                        totalDependencies);
 
-                // 5. Serialize to JSON
+                // 5. Construct Report
+                com.analyzer.common.model.ArchitectureReport report = new com.analyzer.common.model.ArchitectureReport(
+                        totalClasses, totalDependencies, totalCycles, metrics, cycles, health,
+                        classFilter.getAnalysisScope(), tracer.getFilteredClassesCount(),
+                        tracer.getIgnoredClassesCount());
+
+                // 6. Serialize to JSON
                 System.out.println("[DependencyAgent] Dumping architecture report to " + OUTPUT_FILE + "...");
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 mapper.enable(com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT);

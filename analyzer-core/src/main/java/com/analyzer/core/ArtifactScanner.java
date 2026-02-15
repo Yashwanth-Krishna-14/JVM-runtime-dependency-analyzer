@@ -68,7 +68,7 @@ public class ArtifactScanner {
     private void analyzeClass(InputStream is, String version, String source) throws IOException {
         try {
             ClassReader reader = new ClassReader(is);
-            ClassAnalyzer analyzer = new ClassAnalyzer(graph);
+            ClassAnalyzer analyzer = new ClassAnalyzer(graph, new com.analyzer.common.util.ClassFilter(null));
             // We need a way to set version/source on the node created/accessed by the
             // visitor
             // For now, let's pre-register the node if we know the name,

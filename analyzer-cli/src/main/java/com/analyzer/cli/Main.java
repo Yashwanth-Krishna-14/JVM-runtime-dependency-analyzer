@@ -118,6 +118,9 @@ class AttachCommand implements Callable<Integer> {
     @Option(names = { "-a", "--agent" }, required = true, description = "Path to the analyzer-agent.jar")
     private File agentJar;
 
+    @Option(names = "--agent-args", description = "Arguments passed to the Java agent")
+    private String agentArgs;
+
     @Override
     public Integer call() throws Exception {
         if (!agentJar.exists()) {
@@ -132,8 +135,13 @@ class AttachCommand implements Callable<Integer> {
             java.lang.reflect.Method attachMethod = vmClass.getMethod("attach", String.class);
             Object vm = attachMethod.invoke(null, pid);
 
-            java.lang.reflect.Method loadAgentMethod = vmClass.getMethod("loadAgent", String.class);
-            loadAgentMethod.invoke(vm, agentJar.getAbsolutePath());
+            if (agentArgs != null && !agentArgs.isEmpty()) {
+                java.lang.reflect.Method loadAgentMethod = vmClass.getMethod("loadAgent", String.class, String.class);
+                loadAgentMethod.invoke(vm, agentJar.getAbsolutePath(), agentArgs);
+            } else {
+                java.lang.reflect.Method loadAgentMethod = vmClass.getMethod("loadAgent", String.class);
+                loadAgentMethod.invoke(vm, agentJar.getAbsolutePath());
+            }
 
             java.lang.reflect.Method detachMethod = vmClass.getMethod("detach");
             detachMethod.invoke(vm);
