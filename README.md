@@ -129,4 +129,55 @@ jvm-dependency-analyzer/
 - **Maven** — Build and dependency management tool with multi-module project support.
 
 - **Java Instrumentation API** — JVM API used to attach a Java Agent and intercept class loading at runtime.
+
+
+
+## 🚀 How to Run (Dynamic Analysis Mode)
+
+Follow the steps below to attach the analyzer to a running Java application.
+
+---
+
+### 1️⃣ Find the Target Process ID
+
+Start your Java application, then run: jps -l
+
+This lists all running JVM processes.
+
+Note the **PID** of the application you want to analyze.
+
+---
+
+### 2️⃣ Build the Agent
+
+From the project root directory, run: mvn clean package -pl analyzer-agent -am
+
+This builds the `analyzer-agent` module and its required dependencies.
+
+---
+
+### 3️⃣ Attach the Analyzer
+
+Run the CLI and attach the agent to the target process:
+
+`java -jar analyzer-cli/target/analyzer-cli-1.0-SNAPSHOT.jar
+attach --pid <PROCESS_ID> --agent analyzer-agent/target/analyzer-agent-1.0-SNAPSHOT.jar`
+
+
+Replace `<PROCESS_ID>` with the PID obtained from `jps -l`.
+
+Example: java -jar analyzer-cli/target/analyzer-cli-1.0-SNAPSHOT.jar
+attach --pid 13636 --agent analyzer-agent/target/analyzer-agent-1.0-SNAPSHOT.jar
+
+
+---
+
+### 📌 What Happens Next?
+
+- The agent attaches to the running JVM
+- Class loading is intercepted
+- Dependencies are recorded in real time
+- On application shutdown, a JSON report is generated
+
+The agent performs introspection only — it does **not** modify bytecode.
 ```
