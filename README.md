@@ -7,7 +7,6 @@ A modular tool that analyzes Java bytecode to build a directed dependency graph 
 ---
 
 ## Why This Project
-
 As Java applications grow:
 
 - Circular dependencies go unnoticed  
@@ -108,7 +107,7 @@ Example output:
   }
 }
 
-
+```
 ## Project Structure
 
 jvm-dependency-analyzer/
@@ -130,3 +129,4 @@ jvm-dependency-analyzer/
 - **Maven** — Build and dependency management tool with multi-module project support.
 
 - **Java Instrumentation API** — JVM API used to attach a Java Agent and intercept class loading at runtime.
+```
